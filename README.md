@@ -7,7 +7,7 @@
 
 ### What is OPENCLUTCH?
 
-OPENCLUTCH is a sandboxed AI agent development project built on the OpenClaw framework. At its core is **Clutch 1.5** — a purpose-built browser automation specialist operating inside an isolated QEMU/KVM environment on a distributed AI infrastructure stack.
+OPENCLUTCH is a sandboxed AI agent development project. At its core is **Clutch 1.5** — a purpose-built automation specialist operating inside an isolated QEMU/KVM environment on a distributed AI infrastructure stack.
 
 Clutch 1.5 is not a general-purpose assistant. It is a precision instrument — designed, tested, and iterated in a controlled sandbox before graduating to the broader agent network.
 
@@ -16,8 +16,8 @@ Clutch 1.5 is not a general-purpose assistant. It is a precision instrument — 
 ### The Agent
 
 **Name:** Clutch 1.5 O  
-**Host:** Ares VM (QEMU/KVM sandbox on Z230)  
-**Framework:** OpenClaw  
+**Host:** Ares VM (QEMU/KVM sandbox)  
+**Framework:** OpenFang  
 **Primary Role:** Browser automation specialist  
 **Status:** Active development
 
@@ -36,9 +36,27 @@ Clutch 1.5 operates as part of a larger distributed AI agent network:
 
 ---
 
-### Project Code Name
-**OPENCLUTCH**
+### Roadmap
+
+**Current — v1.5 (Sandbox)**
+- Browser automation operational
+- OpenFang agent OS running on isolated VM
+- Local inference via Ollama (no cloud dependency)
+- Telegram channel live
+
+**Next — v2.0 Alpha (OPENCLUTCH)**
+- Local model shipped out of the box — no API key required
+- Ollama-backed inference, TurboQuant-compressed model
+- Optional paid tier: Anthropic 1M token context experience
+- 40-channel adapter support via OpenFang
+- Single-command install, zero configuration
+- Designed for end users — not developers
+
+**Later — Prometheus (Production)**
+- Clean Debian server image, production hardened
+- Only what ships. Nothing else.
+- Public release under OPENCLUTCH
 
 ---
 
-*Built by James Duperry — nemonic-ui*
+*Built by [nemonic-ui](https://github.com/nemonic-ui)*
