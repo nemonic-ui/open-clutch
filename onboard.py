@@ -462,8 +462,7 @@ def main():
             bifurcated = True
             use_anthropic, api_key = bifurcation_gate(model, messages, has_anthropic)
             has_anthropic = use_anthropic
-            if not use_anthropic:
-                break  # Clean exit after declining
+            # Continue on local tier if user declines — don't exit
 
         # Hard cap — force clean end
         if turn >= MAX_TURNS:
