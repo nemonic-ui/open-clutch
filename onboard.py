@@ -276,7 +276,7 @@ def main():
     ])
 
     print("\n  ╔══════════════════════════════════════╗")
-    print("  ║       C L U T C H   2 . 0   [ O ]   ║")
+    print("  ║       C L U T C H   2 . 0   [ O ]    ║")
     print("  ║       Powered by OpenFang            ║")
     print("  ║       Local AI. Zero compromise.     ║")
     print("  ╚══════════════════════════════════════╝\n")
