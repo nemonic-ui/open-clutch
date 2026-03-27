@@ -244,7 +244,7 @@ def infer(model, messages):
             headers={"Content-Type": "application/json"}
         )
         try:
-            resp = urllib.request.urlopen(req, timeout=600)
+            resp = urllib.request.urlopen(req, timeout=None)
             d    = json.loads(resp.read())
         except urllib.error.HTTPError as e:
             print(f"\n  [Error] API returned {e.code}: {e.read().decode()}")
@@ -283,7 +283,7 @@ def infer(model, messages):
         headers={"Content-Type": "application/json"}
     )
     try:
-        resp = urllib.request.urlopen(req, timeout=600)
+        resp = urllib.request.urlopen(req, timeout=None)
         d    = json.loads(resp.read())
         return d.get("response", "").strip()
     except urllib.error.HTTPError as e:
