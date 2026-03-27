@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
 OPENCLUTCH — Onboarding Agent
-Clutch 2.0 O | Powered by OpenFang | Tested on Ares (oroboroslabs/Q:2 via Ollama)
+Clutch 2.0 O | Powered by OpenFang | Tested on Ares (qwen3:8b via Ollama)
 
 O is for Open. OpenFang is the engine. Nothing leaves this machine.
 
 Usage:
     python3 openclutch_onboard.py
-    python3 openclutch_onboard.py --model llama3.2:3b    # low-resource fallback
+    python3 openclutch_onboard.py --model llama3.2:3b     # low-resource fallback
     python3 openclutch_onboard.py --model hermes3:8b     # full agent tier
 """
 
 import argparse, json, sys, time, threading, urllib.request, urllib.error, os
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-DEFAULT_MODEL = "oroboroslabs/Q:2"
+DEFAULT_MODEL = "qwen3:8b"
 FALLBACK_MODEL = "llama3.2:3b"
 MAX_TURNS = 6  # Hard cap before forcing clean exit
 
@@ -42,7 +42,7 @@ BIFURCATION = """
   ══════════════════════════════════════════════════
 
    [ LOCAL — FREE ]  Testing tier
-     · oroboroslabs/Q:2 running on your machine
+     · qwen3:8b running on your machine
      · Proof of concept — explore what agents can do
      · No limits, no account, no data leaves
 

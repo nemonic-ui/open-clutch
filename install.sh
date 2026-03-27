@@ -9,7 +9,7 @@ chmod +x "$0" 2>/dev/null || true
 
 ONBOARD_URL="https://raw.githubusercontent.com/nemonic-ui/open-clutch/main/onboard.py"
 OLLAMA_INSTALL="https://ollama.com/install.sh"
-MODEL="oroboroslabs/Q:2"
+MODEL="qwen3:8b"
 
 # 1. Check for Python 3
 if ! command -v python3 >/dev/null 2>&1; then
