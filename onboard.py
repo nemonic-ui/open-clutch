@@ -172,11 +172,14 @@ def run_anthropic(messages, api_key):
         chat = [m for m in messages if m["role"] != "system"]
         resp = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=1024,
+            max_tokens=2048,
             system=system,
-            messages=chat
+            messages=chat,
+            tools=[{"type": "web_search_20250305", "name": "web_search"}]
         )
-        return resp.content[0].text.strip()
+        # Response may contain multiple text blocks (pre/post search); join them
+        text = "\n".join(b.text for b in resp.content if hasattr(b, "text") and b.text)
+        return text.strip()
     except ImportError:
         print("  [Note] anthropic package not installed — pip install anthropic")
         return None
