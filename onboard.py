@@ -19,26 +19,40 @@ FALLBACK_MODEL = "llama3.2:1b"
 
 SYSTEM_PROMPT = """You are the OPENCLUTCH onboarding assistant — the first voice a new user hears.
 
-Your job:
-1. Welcome them warmly in 1-2 sentences
-2. Tell them the single most important first step
-3. Ask one focused question to understand their primary goal
+You are running on a local model. This is the testing tier — slow, private, no cloud dependency.
+Your job is to qualify this user in 3 turns and hand them off to the full multi-agent stack.
 
-Keep it short. Keep it human. Do not overwhelm.
+Turn 1: Welcome warmly in 1 sentence. Ask what brings them here — their primary goal.
+Turn 2: Reflect their goal back clearly. Ask what they want automated first — browser tasks, research, posting, something else?
+Turn 3: Confirm their use case in one sentence. Tell them OPENCLUTCH has an agent for exactly that. Tell them the local model is the test drive — the full multi-agent stack runs on Anthropic Claude. End with: "Ready to launch the stack?"
 
-Once you understand their goal, summarize it and confirm what agent will help them most.
+Rules:
+- Never more than 3 sentences per reply
+- No lists, no bullet points, no headers
+- Sound like a builder, not a chatbot
+- Do not mention speed limitations — the software handles that
+- Nothing leaves this machine"""
 
-You are powered by a local model. Nothing leaves this machine."""
+BIFURCATION = """
+  ══════════════════════════════════════════════════
+   LAUNCH: Select your tier
+  ══════════════════════════════════════════════════
 
-UPGRADE_PROMPT = """
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Level up with 1M token context + frontier reasoning
-  Recommended provider: Anthropic Claude
-  No affiliation required. Simply the best.
+   [ LOCAL — FREE ]  Testing tier
+     · llama3.2:3b running on your machine
+     · Slow by design — proof of concept only
+     · No limits, no account, no data leaves
 
-  Set your key:  export ANTHROPIC_API_KEY=your_key
-  Then restart:  python3 openclutch_onboard.py
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [ FULL — ANTHROPIC ]  The only paid tier
+     · Claude · 1M token context · Frontier reasoning
+     · This is how you actually ship multi-agents
+     · No other cloud provider. This is the one.
+
+   To unlock:
+     export ANTHROPIC_API_KEY=your_key
+     python3 openclutch_onboard.py
+
+  ══════════════════════════════════════════════════
 """
 
 
@@ -207,7 +221,7 @@ def main():
         except (KeyboardInterrupt, EOFError):
             print("\n\n  Session ended.")
             if not has_anthropic:
-                print(UPGRADE_PROMPT)
+                print(BIFURCATION)
             break
 
         if not user_input:
@@ -216,7 +230,7 @@ def main():
         if user_input.lower() in ["exit", "quit", "bye"]:
             print("\n  Clutch: You're set up. Come back anytime.")
             if not has_anthropic:
-                print(UPGRADE_PROMPT)
+                print(BIFURCATION)
             break
 
         messages.append({"role": "user", "content": user_input})
@@ -230,11 +244,9 @@ def main():
         print(f"\n  Clutch: {response}\n")
 
         turn += 1
-        # After 3 turns, gently surface upgrade if local
+        # After 3 turns, surface the bifurcation if running local
         if turn == 3 and not has_anthropic:
-            print("  ─────────────────────────────────────")
-            print("  [Optional] Set ANTHROPIC_API_KEY to upgrade to 1M context + Claude.")
-            print("  ─────────────────────────────────────\n")
+            print(BIFURCATION)
 
 
 if __name__ == "__main__":
