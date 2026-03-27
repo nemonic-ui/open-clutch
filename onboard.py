@@ -143,8 +143,25 @@ def pull_model(model):
         return False
 
 
+def _messages_to_prompt(messages):
+    """Flatten chat messages into a single prompt string for models without chat templates."""
+    parts = []
+    for m in messages:
+        role = m["role"]
+        content = m["content"]
+        if role == "system":
+            parts.append(content)
+        elif role == "user":
+            parts.append(f"User: {content}")
+        elif role == "assistant":
+            parts.append(f"Assistant: {content}")
+    parts.append("Assistant:")
+    return "\n\n".join(parts)
+
+
 def infer(model, messages):
-    """Send messages to Ollama chat endpoint, return response text."""
+    """Send messages to Ollama chat endpoint, return response text.
+    Falls back to generate endpoint if the model has no chat template."""
     payload = {"model": model, "messages": messages, "stream": False}
     req = urllib.request.Request(
         f"{OLLAMA_HOST}/api/chat",
@@ -154,12 +171,33 @@ def infer(model, messages):
     try:
         resp = urllib.request.urlopen(req, timeout=120)
         d = json.loads(resp.read())
-        return d["message"]["content"].strip()
+        text = d["message"]["content"].strip()
+        if text:
+            return text
+        # Empty response — model likely has no chat template; fall back to generate
     except urllib.error.HTTPError as e:
         print(f"\n  [Error] API returned {e.code}: {e.read().decode()}")
         sys.exit(1)
     except Exception as e:
         print(f"\n  [Error] Inference failed: {e}")
+        sys.exit(1)
+
+    # Fallback: generate endpoint with flattened prompt
+    payload = {"model": model, "prompt": _messages_to_prompt(messages), "stream": False}
+    req = urllib.request.Request(
+        f"{OLLAMA_HOST}/api/generate",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"}
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=120)
+        d = json.loads(resp.read())
+        return d.get("response", "").strip()
+    except urllib.error.HTTPError as e:
+        print(f"\n  [Error] Generate API returned {e.code}: {e.read().decode()}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n  [Error] Generate fallback failed: {e}")
         sys.exit(1)
 
 
