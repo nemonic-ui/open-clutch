@@ -4,6 +4,9 @@
 
 set -e
 
+# Ensure this script is executable if run directly
+chmod +x "$0" 2>/dev/null || true
+
 ONBOARD_URL="https://raw.githubusercontent.com/nemonic-ui/open-clutch/main/onboard.py"
 OLLAMA_INSTALL="https://ollama.com/install.sh"
 MODEL="llama3.2:3b"
