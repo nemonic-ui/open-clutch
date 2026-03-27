@@ -13,12 +13,15 @@ import argparse, json, os, sys, time, random, urllib.request, urllib.error, urll
 from datetime import datetime, timezone, timedelta
 
 # ── Credentials ────────────────────────────────────────────────────────────────
+# Autonomous_Robot app (OPENCLUTCH2 project) — used for search (bearer) + posting
 API_KEY    = os.environ.get("TWITTER_API_KEY",    "urWhlVml1uNSEkSiRUCWZmzsH")
 API_SECRET = os.environ.get("TWITTER_API_SECRET", "jS8Il1GkLpShDi9Y80ztsruNPBWxKxVITzkeykdJ6WKs81iEKG")
-ACC_TOKEN  = os.environ.get("TWITTER_ACCESS_TOKEN",        "2024172243073302528-X1uYjZ6Fou6797f1qeH3LVOmDbxgej")
-ACC_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", "fiMXjUNppgdtLIWnjaQFlZRfSLtIdm8GOYQqVoA890yhB")
 BEARER     = os.environ.get("TWITTER_BEARER_TOKEN",
     "AAAAAAAAAAAAAAAAAAAAAJXq7gEAAAAAh9UInFMjk5OGElr0G%2FnI6HCwdhk%3Dqff1BrRoAq55n8CPuSa4nBtsjeqf0APMmNJ4gKXOpFA6mmeJan")
+
+# @theradiomachine — trusted account (10yr old, 387 followers) for posting
+ACC_TOKEN  = os.environ.get("TWITTER_ACCESS_TOKEN",        "759975138896912384-VqHEtClUgcwngcLOOE5EEmETMiVrycN")
+ACC_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET", "uH5eZYH3JGnGTQ9Z3gQtv6dYfCSHZCTpvCoCGBbCnLLOf")
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 MIN_SCORE        = 5          # Minimum relevance to engage
@@ -317,10 +320,18 @@ def search_tweets(query, max_results=10):
         return None
 
 
-def post_reply(tweet_id, reply_text):
-    """Post a reply to a tweet."""
+def post_quote(tweet_id, username, reply_text):
+    """Standalone mention tweet — @mentions user, links their post, plants perspective.
+    Free tier blocks reply/quote unless mentioned first; plain tweets with @mention work."""
     url = "https://api.twitter.com/2/tweets"
-    body = json.dumps({"text": reply_text, "reply": {"in_reply_to_tweet_id": tweet_id}}).encode()
+    tweet_url = f"https://x.com/{username}/status/{tweet_id}"
+    # Format: @username <perspective> — @OPENCLUTCH2 <url>
+    suffix = f" — @OPENCLUTCH2 {tweet_url}"
+    max_body = 280 - len(f"@{username} ") - len(suffix)
+    if len(reply_text) > max_body:
+        reply_text = reply_text[:max_body]
+    text = f"@{username} {reply_text}{suffix}"
+    body = json.dumps({"text": text}).encode()
     auth = oauth_header("POST", url)
     req = urllib.request.Request(url, data=body, headers={
         "Authorization": auth,
@@ -417,12 +428,12 @@ def main():
             print(f"           reply: {reply_text}")
 
             if args.post:
-                tweet_reply_id = post_reply(tweet_id, reply_text)
-                if tweet_reply_id:
+                posted_id = post_quote(tweet_id, username, reply_text)
+                if posted_id:
                     record_reply(mem, author_id, username, tweet_id, reply_text)
                     save_memory(mem)
                     replied += 1
-                    print(f"           posted [{tweet_reply_id}]\n")
+                    print(f"           quoted [{posted_id}]\n")
                     time.sleep(random.uniform(8, 20))  # Human-like spacing
             else:
                 replied += 1
