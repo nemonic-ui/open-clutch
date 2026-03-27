@@ -110,6 +110,23 @@ def dispatch_skill(name, args):
     return f"Unknown skill: {name}"
 
 
+_LIVE_KEYWORDS = {
+    "news", "headline", "headlines", "latest", "today", "current",
+    "weather", "price", "score", "time", "date", "just happened",
+    "breaking", "recently", "right now", "this week",
+}
+
+def _prefetch_skill(user_input):
+    """If the user asks for live data, fetch it before inference.
+    Returns a string result to inject as context, or None."""
+    words = set(user_input.lower().split())
+    if not (_LIVE_KEYWORDS & words):
+        return None
+    if any(w in user_input.lower() for w in ("time", "date", "what time", "what day")):
+        return f"[Current date/time: {skill_datetime()}]"
+    return f"[Live search results for '{user_input}':\n{skill_web_search(user_input)}]"
+
+
 SKILL_TOOLS = [
     {
         "type": "function",
@@ -446,7 +463,13 @@ def main():
                 print(UNLOCK_PROMPT)
             break
 
-        messages.append({"role": "user", "content": user_input})
+        # Pre-fetch live data when user asks for news/time/etc.
+        # Inject results as context so model never has to hallucinate live info
+        live_ctx = None if use_anthropic else _prefetch_skill(user_input)
+        if live_ctx:
+            messages.append({"role": "user", "content": f"{user_input}\n\n{live_ctx}"})
+        else:
+            messages.append({"role": "user", "content": user_input})
 
         if use_anthropic:
             response = thinking(run_anthropic, messages, api_key) or thinking(infer, model, messages)
