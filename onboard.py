@@ -301,7 +301,8 @@ def main():
                 if not check_model(model):
                     pull_model(model)
 
-        print(f"  Engine: OpenFang  ·  Model: {model}  ·  Private\n")
+        print(f"  Engine: OpenFang  ·  Model: {model}  ·  Private")
+        print(f"  [Cold start — loading {model}, first response may take 60-90s]\n")
 
     # Build message history
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
