@@ -11,7 +11,7 @@ Usage:
     python3 openclutch_onboard.py --model hermes3:8b     # full agent tier
 """
 
-import argparse, json, sys, time, threading, urllib.request, urllib.error, os
+import argparse, json, re, sys, time, threading, urllib.request, urllib.error, urllib.parse, os
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = "qwen3:8b"
@@ -34,7 +34,9 @@ Hard rules:
 - Never say you are switching to Anthropic or that any upgrade has happened. The software handles that.
 - Never claim to be Claude or Anthropic. You are Clutch.
 - Never respond to empty input.
-- Sound like a builder who ships, not a customer service bot."""
+- Sound like a builder who ships, not a customer service bot.
+
+You have built-in tools: use web_search for live news or current info when asked, get_datetime for the current time."""
 
 BIFURCATION = """
   ══════════════════════════════════════════════════
@@ -63,6 +65,77 @@ UNLOCK_PROMPT = """
   Get your key at: console.anthropic.com
 """
 
+
+# ── Built-in skills ────────────────────────────────────────────────────────
+
+def skill_web_search(query):
+    """DuckDuckGo HTML search — top 3 results with title, URL, snippet."""
+    data = urllib.parse.urlencode({"q": query, "kl": "us-en"}).encode()
+    req = urllib.request.Request(
+        "https://html.duckduckgo.com/html/",
+        data=data,
+        headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"}
+    )
+    try:
+        html = urllib.request.urlopen(req, timeout=10).read().decode("utf-8", errors="ignore")
+        links    = re.findall(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', html)
+        snippets = re.findall(r'class="result__snippet">(.*?)</a>', html, re.DOTALL)
+        results  = []
+        for (url, title), snippet in zip(links[:3], snippets[:3]):
+            title   = re.sub(r"<[^>]+>", "", title).strip()
+            snippet = re.sub(r"<[^>]+>", "", snippet).strip()
+            try:
+                qs  = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+                url = urllib.parse.unquote(qs.get("uddg", [url])[0])
+            except Exception:
+                pass
+            results.append(f"- {title}\n  {url}\n  {snippet}")
+        return "\n\n".join(results) if results else "No results found."
+    except Exception as e:
+        return f"Search error: {e}"
+
+
+def skill_datetime():
+    """Return the current local date and time."""
+    from datetime import datetime
+    return datetime.now().strftime("%A, %B %d, %Y — %I:%M %p")
+
+
+def dispatch_skill(name, args):
+    """Execute a built-in skill by name. Returns a string result."""
+    if name == "web_search":
+        return skill_web_search(args.get("query", ""))
+    if name == "get_datetime":
+        return skill_datetime()
+    return f"Unknown skill: {name}"
+
+
+SKILL_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "web_search",
+            "description": "Search the web for current news, information, or any topic.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "The search query"}
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_datetime",
+            "description": "Get the current local date and time.",
+            "parameters": {"type": "object", "properties": {}, "required": []}
+        }
+    }
+]
+
+# ── TTY detection ───────────────────────────────────────────────────────────
 
 IS_TTY = sys.stdout.isatty()
 
@@ -160,29 +233,49 @@ def _messages_to_prompt(messages):
 
 
 def infer(model, messages):
-    """Send messages to Ollama chat endpoint, return response text.
-    Falls back to generate endpoint if the model has no chat template."""
-    payload = {"model": model, "messages": messages, "stream": False}
-    req = urllib.request.Request(
-        f"{OLLAMA_HOST}/api/chat",
-        data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"}
-    )
-    try:
-        resp = urllib.request.urlopen(req, timeout=300)
-        d = json.loads(resp.read())
-        text = d["message"]["content"].strip()
-        if text:
-            return text
-        # Empty response — model likely has no chat template; fall back to generate
-    except urllib.error.HTTPError as e:
-        print(f"\n  [Error] API returned {e.code}: {e.read().decode()}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"\n  [Error] Inference failed: {e}")
-        sys.exit(1)
+    """Chat with built-in tool support. Falls back to generate for template-less models."""
+    chat = list(messages)
 
-    # Fallback: generate endpoint with flattened prompt
+    for _ in range(5):  # max tool rounds
+        payload = {"model": model, "messages": chat, "tools": SKILL_TOOLS, "stream": False}
+        req = urllib.request.Request(
+            f"{OLLAMA_HOST}/api/chat",
+            data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"}
+        )
+        try:
+            resp = urllib.request.urlopen(req, timeout=600)
+            d    = json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            print(f"\n  [Error] API returned {e.code}: {e.read().decode()}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"\n  [Error] Inference failed: {e}")
+            sys.exit(1)
+
+        msg        = d["message"]
+        tool_calls = msg.get("tool_calls") or []
+        text       = (msg.get("content") or "").strip()
+
+        if not tool_calls:
+            if text:
+                return text
+            break  # empty + no tools → broken template, fall to generate
+
+        # Execute tool calls and feed results back
+        chat.append({"role": "assistant", "content": text, "tool_calls": tool_calls})
+        for tc in tool_calls:
+            fn   = tc["function"]
+            name = fn["name"]
+            args = fn.get("arguments", {})
+            if isinstance(args, str):
+                try:
+                    args = json.loads(args)
+                except Exception:
+                    args = {}
+            chat.append({"role": "tool", "content": dispatch_skill(name, args)})
+
+    # Fallback: generate endpoint without tools (models with no chat template)
     payload = {"model": model, "prompt": _messages_to_prompt(messages), "stream": False}
     req = urllib.request.Request(
         f"{OLLAMA_HOST}/api/generate",
@@ -190,8 +283,8 @@ def infer(model, messages):
         headers={"Content-Type": "application/json"}
     )
     try:
-        resp = urllib.request.urlopen(req, timeout=300)
-        d = json.loads(resp.read())
+        resp = urllib.request.urlopen(req, timeout=600)
+        d    = json.loads(resp.read())
         return d.get("response", "").strip()
     except urllib.error.HTTPError as e:
         print(f"\n  [Error] Generate API returned {e.code}: {e.read().decode()}")
