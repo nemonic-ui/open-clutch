@@ -169,7 +169,7 @@ def infer(model, messages):
         headers={"Content-Type": "application/json"}
     )
     try:
-        resp = urllib.request.urlopen(req, timeout=120)
+        resp = urllib.request.urlopen(req, timeout=300)
         d = json.loads(resp.read())
         text = d["message"]["content"].strip()
         if text:
@@ -190,7 +190,7 @@ def infer(model, messages):
         headers={"Content-Type": "application/json"}
     )
     try:
-        resp = urllib.request.urlopen(req, timeout=120)
+        resp = urllib.request.urlopen(req, timeout=300)
         d = json.loads(resp.read())
         return d.get("response", "").strip()
     except urllib.error.HTTPError as e:
