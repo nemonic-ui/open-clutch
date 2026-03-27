@@ -53,7 +53,7 @@ def web_search(query: str) -> str:
     try:
         html     = urllib.request.urlopen(req, timeout=10).read().decode("utf-8", errors="ignore")
         links    = re.findall(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', html)
-        snippets = re.findall(r'class="result__snippet">(.*?)</a>', html, re.DOTALL)
+        snippets = re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', html, re.DOTALL)
         results  = []
         for (url, title), snippet in zip(links[:3], snippets[:3]):
             title   = re.sub(r"<[^>]+>", "", title).strip()
