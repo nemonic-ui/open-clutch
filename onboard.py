@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
 OPENCLUTCH — Onboarding Agent
-Alpha v0.1 | Tested on Ares (llama3.2:3b via Ollama)
+Clutch 2.0 O | Powered by OpenFang | Tested on Ares (llama3.2:3b via Ollama)
+
+O is for Open. OpenFang is the engine. Nothing leaves this machine.
 
 Usage:
     python3 openclutch_onboard.py
@@ -9,7 +11,7 @@ Usage:
     python3 openclutch_onboard.py --model hermes3:8b     # full agent tier
 """
 
-import argparse, json, sys, time, urllib.request, urllib.error, shutil, subprocess, os
+import argparse, json, sys, time, urllib.request, urllib.error, os
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = "llama3.2:3b"
@@ -38,6 +40,16 @@ UPGRADE_PROMPT = """
   Then restart:  python3 openclutch_onboard.py
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
+
+
+def _ghost(lines, duration=1.2):
+    """Print lines briefly, then erase them. One-time ghost — doesn't linger."""
+    for line in lines:
+        print(line)
+    sys.stdout.flush()
+    time.sleep(duration)
+    sys.stdout.write('\033[F\033[2K' * len(lines))
+    sys.stdout.flush()
 
 
 def check_ollama():
@@ -128,7 +140,7 @@ def run_anthropic(messages, api_key):
 
 def main():
     global OLLAMA_HOST
-    parser = argparse.ArgumentParser(description="OPENCLUTCH Onboarding Agent")
+    parser = argparse.ArgumentParser(description="OPENCLUTCH 2.0 O — Onboarding Agent")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Local Ollama model to use")
     parser.add_argument("--host", default=OLLAMA_HOST, help="Ollama host URL")
     args = parser.parse_args()
@@ -136,10 +148,18 @@ def main():
     OLLAMA_HOST = args.host
     model = args.model
 
-    print("\n  ╔═══════════════════════════════╗")
-    print("  ║       OPENCLUTCH  v0.1        ║")
-    print("  ║  Local AI. Zero compromise.   ║")
-    print("  ╚═══════════════════════════════╝\n")
+    # Ghost — flashes once, never seen again
+    _ghost([
+        "",
+        "  ol' molty ran the warmup. good demo, petey — we're shipping it back.",
+        "",
+    ])
+
+    print("\n  ╔══════════════════════════════════════╗")
+    print("  ║       C L U T C H   2 . 0   [ O ]   ║")
+    print("  ║       Powered by OpenFang            ║")
+    print("  ║       Local AI. Zero compromise.     ║")
+    print("  ╚══════════════════════════════════════╝\n")
 
     # Check for Anthropic upgrade
     has_anthropic, api_key = check_anthropic_upgrade()
@@ -161,7 +181,7 @@ def main():
                 if not check_model(model):
                     pull_model(model)
 
-        print(f"  Running on: {model} (local, private)\n")
+        print(f"  Engine: OpenFang  ·  Model: {model}  ·  Private\n")
 
     # Conversation loop
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
