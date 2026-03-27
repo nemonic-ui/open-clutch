@@ -11,13 +11,6 @@ ONBOARD_URL="https://raw.githubusercontent.com/nemonic-ui/open-clutch/main/onboa
 OLLAMA_INSTALL="https://ollama.com/install.sh"
 MODEL="llama3.2:3b"
 
-echo ""
-echo "  ╔═══════════════════════════════╗"
-echo "  ║       OPENCLUTCH  v0.1        ║"
-echo "  ║  Local AI. Zero compromise.   ║"
-echo "  ╚═══════════════════════════════╝"
-echo ""
-
 # 1. Check for Python 3
 if ! command -v python3 >/dev/null 2>&1; then
   echo "  [!] Python 3 required. Install it and re-run."
