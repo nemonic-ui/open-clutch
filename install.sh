@@ -42,6 +42,10 @@ fi
 echo "  Fetching onboard.py..."
 curl -sSf "$ONBOARD_URL" -o /tmp/openclutch_onboard.py
 
-# 6. Launch
+# 6. Launch — claim /dev/tty so stdin/ANSI work even when piped via curl | sh
 echo ""
-python3 /tmp/openclutch_onboard.py
+if [ -t 0 ]; then
+  python3 /tmp/openclutch_onboard.py
+else
+  python3 /tmp/openclutch_onboard.py < /dev/tty
+fi
