@@ -63,8 +63,13 @@ UNLOCK_PROMPT = """
 """
 
 
+IS_TTY = sys.stdout.isatty()
+
+
 def _ghost(lines, duration=1.2):
-    """Flash lines briefly, then erase. One-time ghost."""
+    """Flash lines briefly, then erase. Skipped when not on a real TTY."""
+    if not IS_TTY:
+        return
     for line in lines:
         print(line)
     sys.stdout.flush()
@@ -74,7 +79,12 @@ def _ghost(lines, duration=1.2):
 
 
 def _spinner(stop_event):
-    """Show a thinking indicator while waiting for inference."""
+    """Show a thinking indicator. Falls back to a simple dot when not on a TTY."""
+    if not IS_TTY:
+        sys.stdout.write('  Clutch  ...\n')
+        sys.stdout.flush()
+        stop_event.wait()
+        return
     frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
     i = 0
     while not stop_event.is_set():
