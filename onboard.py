@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 OPENCLUTCH — Onboarding Agent
-Clutch 2.0 O | Powered by OpenFang | Tested on Ares (qwen3:8b via Ollama)
+Clutch 2.0 O | v1.76 | Powered by OpenFang | Tested on Ares (qwen3:8b via Ollama)
 
 O is for Open. OpenFang is the engine. Nothing leaves this machine.
 
@@ -420,10 +420,15 @@ def _launch_hands():
     if launched:
         print(f"\n  ══════════════════════════════════════════════════")
         print(f"   {len(launched)} agent(s) running: {', '.join(launched)}")
-        print(f"  ══════════════════════════════════════════════════")
-        print(f"\n  Chat:      openfang agent chat <name>")
-        print(f"  All agents: openfang agent list")
-        print(f"  Dashboard:  openfang dashboard\n")
+        print(f"  ══════════════════════════════════════════════════\n")
+        print(f"  Opening dashboard...\n")
+        try:
+            subprocess.run(["openfang", "tui"])
+        except FileNotFoundError:
+            print(f"  (openfang not found — run `openfang tui` manually)")
+        except KeyboardInterrupt:
+            print("\n  Dashboard closed. Agents still running in background.")
+            print(f"  Resume anytime: openfang tui\n")
     else:
         print("\n  No agents launched successfully.\n")
 
@@ -478,7 +483,8 @@ def main():
     ])
 
     print("\n  ╔══════════════════════════════════════╗")
-    print("  ║       C L U T C H   2 . 0   [ O ]    ║")
+    print("  ║     C L U T C H   2 . 0   [ O ]      ║
+  ║              v 1 . 7 6               ║")
     print("  ║       Powered by OpenFang            ║")
     print("  ║       Local AI. Zero compromise.     ║")
     print("  ╚══════════════════════════════════════╝\n")
