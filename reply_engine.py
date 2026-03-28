@@ -21,6 +21,7 @@ import urllib.request, urllib.parse
 OLLAMA_HOST   = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 REPLY_MODEL   = os.environ.get("REPLY_MODEL", "qwen3:8b")
 STATE_FILE    = os.path.expanduser("~/.openclutch_reply_state.json")
+CREDS_FILE    = os.path.expanduser("~/.openclutch_creds.json")
 
 # Search keywords — any match triggers candidate evaluation
 SEARCH_QUERIES = [
@@ -55,35 +56,15 @@ RADIO_REFERRAL_SUFFIX = "\n\n→ @OPENCLUTCH2"
 
 # ── Credential loader ─────────────────────────────────────────────────────────
 
-def _vault_get(key):
-    try:
-        r = subprocess.run(
-            ["openfang", "vault", "get", key],
-            capture_output=True, text=True, timeout=5
-        )
-        return r.stdout.strip().splitlines()[-1].strip() if r.returncode == 0 else None
-    except Exception:
-        return None
-
-
 def _get_creds(account="openclutch"):
-    """Load Twitter OAuth credentials for the given account."""
-    if account == "radio":
-        return {
-            "api_key":       _vault_get("TWITTER_RADIOMACHINE_API_KEY"),
-            "api_secret":    _vault_get("TWITTER_RADIOMACHINE_API_SECRET"),
-            "access_token":  _vault_get("TWITTER_RADIOMACHINE_ACCESS_TOKEN"),
-            "access_secret": _vault_get("TWITTER_RADIOMACHINE_ACCESS_SECRET"),
-            "bearer":        urllib.parse.unquote(_vault_get("TWITTER_RADIOMACHINE_BEARER") or ""),
-        }
-    else:
-        return {
-            "api_key":       _vault_get("TWITTER_OPENCLUTCH2_API_KEY"),
-            "api_secret":    _vault_get("TWITTER_OPENCLUTCH2_API_SECRET"),
-            "access_token":  _vault_get("TWITTER_OPENCLUTCH2_ACCESS_TOKEN"),
-            "access_secret": _vault_get("TWITTER_OPENCLUTCH2_ACCESS_SECRET"),
-            "bearer":        urllib.parse.unquote(_vault_get("TWITTER_OPENCLUTCH2_BEARER") or ""),
-        }
+    """Load Twitter OAuth credentials from local creds file."""
+    try:
+        with open(CREDS_FILE) as f:
+            all_creds = json.load(f)
+        return all_creds.get(account, {})
+    except Exception as e:
+        print(f"[!] Could not load creds from {CREDS_FILE}: {e}")
+        return {}
 
 
 # ── State management ──────────────────────────────────────────────────────────
@@ -163,31 +144,125 @@ def _build_client(creds):
         sys.exit(1)
 
 
-def _search_posts(client, query, max_results=10):
-    """Search recent tweets matching query. Returns list of {id, text, likes}."""
-    try:
-        import tweepy
-        resp = client.search_recent_tweets(
-            query=f"{query} -is:retweet lang:en",
-            max_results=max_results,
-            tweet_fields=["public_metrics", "author_id", "text"],
-        )
-        if not resp.data:
-            return []
-        results = []
-        for t in resp.data:
-            metrics = t.public_metrics or {}
-            results.append({
-                "id":     str(t.id),
-                "text":   t.text,
-                "likes":  metrics.get("like_count", 0),
-                "replies": metrics.get("reply_count", 0),
-                "author": str(t.author_id),
-            })
-        return results
-    except Exception as e:
-        print(f"  [search error] {e}")
-        return []
+NITTER_INSTANCES = [
+    "https://nitter.net",
+    "https://nitter.privacydev.net",
+    "https://nitter.poast.org",
+]
+
+# Curated accounts to monitor for reply opportunities
+WATCH_ACCOUNTS = [
+    "ollama_ai",
+    "simonw",
+    "karpathy",
+    "jerryjliu0",
+    "weights_biases",
+    "huggingface",
+    "LangChainAI",
+    "llama_index",
+]
+
+def _nitter_user_tweets(username, max_results=5):
+    """Fetch recent tweets from a user's timeline via nitter."""
+    results = []
+    for base in NITTER_INSTANCES:
+        try:
+            url = f"{base}/{username}"
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"}
+            )
+            html = urllib.request.urlopen(req, timeout=8).read().decode("utf-8", errors="ignore")
+            blocks = re.findall(
+                r'/(?:' + username + r')/status/(\d+).*?'
+                r'class="tweet-content[^"]*"[^>]*>(.*?)</div>',
+                html, re.DOTALL | re.IGNORECASE
+            )
+            for tweet_id, raw_text in blocks:
+                text = re.sub(r"<[^>]+>", "", raw_text).strip()
+                if len(text) < 20:
+                    continue
+                results.append({"id": tweet_id, "text": text, "likes": 20})
+                if len(results) >= max_results:
+                    break
+            if results:
+                break
+        except Exception:
+            continue
+    return results
+
+
+def _search_posts(client, query=None, max_results=10):
+    """
+    Gather candidate posts from watched accounts via nitter.
+    query param is ignored (search API requires paid tier).
+    """
+    results = []
+    seen    = set()
+    for account in random.sample(WATCH_ACCOUNTS, min(3, len(WATCH_ACCOUNTS))):
+        posts = _nitter_user_tweets(account, max_results=3)
+        for p in posts:
+            if p["id"] not in seen:
+                seen.add(p["id"])
+                results.append(p)
+        if len(results) >= max_results:
+            break
+        time.sleep(0.5)
+    return results
+
+
+def _reply_to_url(client, tweet_url, account="openclutch", dry_run=False):
+    """
+    Manual mode: given a tweet URL, generate and post a reply.
+    Usage: reply_engine.py --url https://x.com/user/status/12345
+    """
+    match = re.search(r"/status/(\d+)", tweet_url)
+    if not match:
+        print("[!] Could not extract tweet ID from URL")
+        return
+
+    tweet_id = match.group(1)
+    username = re.search(r"x\.com/([^/]+)/status", tweet_url)
+    username = username.group(1) if username else "unknown"
+
+    # Fetch tweet text via nitter
+    tweet_text = None
+    for base in NITTER_INSTANCES:
+        try:
+            url = f"{base}/{username}/status/{tweet_id}"
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64)"}
+            )
+            html = urllib.request.urlopen(req, timeout=8).read().decode("utf-8", errors="ignore")
+            m = re.search(r'class="tweet-content[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
+            if m:
+                tweet_text = re.sub(r"<[^>]+>", "", m.group(1)).strip()
+                break
+        except Exception:
+            continue
+
+    if not tweet_text:
+        print("[!] Could not fetch tweet text. Paste it below:")
+        tweet_text = input("  Tweet text: ").strip()
+        if not tweet_text:
+            return
+
+    state      = _load_state()
+    catchphrase = _next_catchphrase(state)
+    creds      = _get_creds(account)
+    client     = _build_client(creds)
+
+    print(f"\n  Tweet: {tweet_text[:100]}...")
+    reply = _generate_reply(tweet_text, catchphrase, account)
+    if not reply:
+        print("[!] Failed to generate reply")
+        return
+
+    print(f"  Reply: {reply}")
+    ok = _post_reply(client, reply, tweet_id, dry_run=dry_run)
+    if ok:
+        state["replied_ids"] = list(set(state.get("replied_ids", [])) | {tweet_id})[-500:]
+        _save_state(state)
+        print("  ✓ Posted" if not dry_run else "  [dry run]")
 
 
 def _post_reply(client, reply_text, tweet_id, dry_run=False):
@@ -285,9 +360,15 @@ if __name__ == "__main__":
                         help="Generate replies without posting")
     parser.add_argument("--query",    default=None,
                         help="Override search query (default: random from list)")
+    parser.add_argument("--url",      default=None,
+                        help="Reply to a specific tweet URL (manual mode)")
     args = parser.parse_args()
 
-    if args.query:
-        SEARCH_QUERIES.insert(0, args.query)
-
-    run(account=args.account, dry_run=args.dry_run)
+    if args.url:
+        creds  = _get_creds(args.account)
+        client = _build_client(creds)
+        _reply_to_url(client, args.url, account=args.account, dry_run=args.dry_run)
+    else:
+        if args.query:
+            SEARCH_QUERIES.insert(0, args.query)
+        run(account=args.account, dry_run=args.dry_run)
