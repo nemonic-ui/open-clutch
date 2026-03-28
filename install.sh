@@ -8,6 +8,7 @@ set -e
 chmod +x "$0" 2>/dev/null || true
 
 ONBOARD_URL="https://raw.githubusercontent.com/nemonic-ui/open-clutch/main/onboard.py"
+TUI_URL="https://raw.githubusercontent.com/nemonic-ui/open-clutch/main/tui.py"
 OLLAMA_INSTALL="https://ollama.com/install.sh"
 MODEL="qwen3:8b"
 
@@ -38,9 +39,11 @@ if ! ollama list 2>/dev/null | grep -q "${MODEL%%:*}"; then
   ollama pull "$MODEL"
 fi
 
-# 5. Download onboard.py
+# 5. Download onboard.py + tui.py
 echo "  Fetching onboard.py..."
 curl -sSf "$ONBOARD_URL" -o /tmp/openclutch_onboard.py
+echo "  Fetching tui.py..."
+curl -sSf "$TUI_URL" -o /tmp/openclutch_tui.py
 
 # 6. Launch — claim /dev/tty so stdin/ANSI work even when piped via curl | sh
 echo ""

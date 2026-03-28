@@ -422,13 +422,21 @@ def _launch_hands():
         print(f"   {len(launched)} agent(s) running: {', '.join(launched)}")
         print(f"  ══════════════════════════════════════════════════\n")
         print(f"  Opening dashboard...\n")
+        # Prefer our own TUI; fall back to openfang tui if available
+        tui_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tui.py")
+        if not os.path.exists(tui_path):
+            tui_path = "/tmp/openclutch_tui.py"
         try:
-            subprocess.run(["openfang", "tui"])
+            if os.path.exists(tui_path):
+                subprocess.run([sys.executable, tui_path])
+            else:
+                subprocess.run(["openfang", "tui"])
         except FileNotFoundError:
-            print(f"  (openfang not found — run `openfang tui` manually)")
+            print(f"  (TUI not found — run `python3 tui.py` manually)")
         except KeyboardInterrupt:
-            print("\n  Dashboard closed. Agents still running in background.")
-            print(f"  Resume anytime: openfang tui\n")
+            pass
+        print("\n  Dashboard closed. Agents still running in background.")
+        print(f"  Resume anytime: python3 tui.py\n")
     else:
         print("\n  No agents launched successfully.\n")
 
