@@ -124,7 +124,13 @@ def _prefetch_skill(user_input):
         return None
     if any(w in user_input.lower() for w in ("time", "date", "what time", "what day")):
         return f"[Current date/time: {skill_datetime()}]"
-    return f"[Live search results for '{user_input}':\n{skill_web_search(user_input)}]"
+    # For news/headlines, append today's date to get article-level results
+    from datetime import datetime
+    news_kw = {"news", "headline", "headlines", "breaking"}
+    query = user_input
+    if news_kw & words:
+        query = f"{user_input} {datetime.now().strftime('%B %d %Y')}"
+    return f"[Live search results for '{user_input}':\n{skill_web_search(query)}]"
 
 
 SKILL_TOOLS = [
