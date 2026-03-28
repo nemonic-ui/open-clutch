@@ -11,7 +11,7 @@ Usage:
     python3 openclutch_onboard.py --model hermes3:8b     # full agent tier
 """
 
-import argparse, json, re, sys, time, threading, urllib.request, urllib.error, urllib.parse, os
+import argparse, json, re, sys, time, threading, urllib.request, urllib.error, urllib.parse, os, subprocess
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = "qwen3:8b"
@@ -342,6 +342,92 @@ def run_anthropic(messages, api_key):
         return None
 
 
+HANDS = [
+    ("researcher", "Researcher   — autonomous web research & reports"),
+    ("browser",    "Browser      — browser automation & scraping"),
+    ("twitter",    "Twitter      — social posting & monitoring"),
+    ("clip",       "Clip         — content clipping & summarization"),
+    ("lead",       "Lead         — lead generation & outreach"),
+    ("collector",  "Collector    — data collection & aggregation"),
+    ("predictor",  "Predictor    — forecasting & trend analysis"),
+    ("trader",     "Trading      — market monitoring & signals"),
+]
+
+
+def _launch_hands():
+    """Show agent picker and spin up selected OpenFang hands."""
+    print("\n  ══════════════════════════════════════════════════")
+    print("   LAUNCH AGENTS")
+    print("  ══════════════════════════════════════════════════\n")
+    for i, (_, desc) in enumerate(HANDS, 1):
+        print(f"   [{i}] {desc}")
+    print("\n   [A] Launch all")
+    print("   [Q] Skip\n")
+
+    try:
+        choice = input("  Choose (e.g. 1 3  or  A): ").strip().lower()
+    except (KeyboardInterrupt, EOFError):
+        print("\n  Skipping.\n")
+        return
+
+    if not choice or choice == "q":
+        print("\n  No agents launched. Run `openfang agent new` anytime.\n")
+        return
+
+    if choice == "a":
+        selected = HANDS
+    else:
+        selected = []
+        for token in choice.split():
+            try:
+                idx = int(token) - 1
+                if 0 <= idx < len(HANDS):
+                    selected.append(HANDS[idx])
+            except ValueError:
+                pass
+
+    if not selected:
+        print("\n  Nothing selected.\n")
+        return
+
+    # Start daemon (idempotent — safe to call if already running)
+    print("\n  Starting OpenFang daemon...")
+    try:
+        subprocess.run(["openfang", "start"], timeout=20,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(2)
+    except Exception as e:
+        print(f"  [!] Could not start daemon: {e}")
+        print("  Run `openfang start` manually, then `openfang agent new <name>`\n")
+        return
+
+    launched = []
+    for key, _ in selected:
+        print(f"  Launching {key}...", end=" ", flush=True)
+        try:
+            r = subprocess.run(
+                ["openfang", "agent", "new", key],
+                timeout=30, capture_output=True, text=True
+            )
+            if r.returncode == 0:
+                launched.append(key)
+                print("✓")
+            else:
+                print(f"✗  ({r.stderr.strip()[:80]})")
+        except Exception as e:
+            print(f"✗  ({e})")
+
+    if launched:
+        print(f"\n  ══════════════════════════════════════════════════")
+        print(f"   {len(launched)} agent(s) running: {', '.join(launched)}")
+        print(f"  ══════════════════════════════════════════════════")
+        print(f"\n  Chat:      openfang agent chat <name>")
+        print(f"  All agents: openfang agent list")
+        print(f"  Dashboard:  openfang dashboard\n")
+    else:
+        print("\n  No agents launched successfully.\n")
+
+
 def bifurcation_gate(model, messages, has_anthropic):
     """After qualification, handle tier selection and optionally continue."""
     print(BIFURCATION)
@@ -487,11 +573,12 @@ def main():
         turn += 1
 
         # Bifurcation gate after qualification turns
-        if turn >= 3 and not has_anthropic and not bifurcated:
+        if turn >= 3 and not bifurcated:
             bifurcated = True
-            use_anthropic, api_key = bifurcation_gate(model, messages, has_anthropic)
-            has_anthropic = use_anthropic
-            # Continue on local tier if user declines — don't exit
+            if not has_anthropic:
+                use_anthropic, api_key = bifurcation_gate(model, messages, has_anthropic)
+                has_anthropic = use_anthropic
+            _launch_hands()
 
         # Hard cap — force clean end
         if turn >= MAX_TURNS:
