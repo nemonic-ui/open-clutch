@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 OPENCLUTCH — Onboarding Agent
-Clutch 2.0 O | v1.76 | Powered by OpenFang | Tested on Ares (qwen3:8b via Ollama)
+Clutch 2.0 O | v1.77 | Powered by OpenFang | Default: llama3.2:3b
 
 O is for Open. OpenFang is the engine. Nothing leaves this machine.
 
@@ -491,8 +491,8 @@ def main():
     ])
 
     print("\n  ╔══════════════════════════════════════╗")
-    print("  ║     C L U T C H   2 . 0   [ O ]      ║
-  ║              v 1 . 7 6               ║")
+    print("  ║     C L U T C H   2 . 0   [ O ]      ║")
+    print("  ║              v 1 . 7 7               ║")
     print("  ║       Powered by OpenFang            ║")
     print("  ║       Local AI. Zero compromise.     ║")
     print("  ╚══════════════════════════════════════╝\n")
@@ -518,7 +518,12 @@ def main():
                     pull_model(model)
 
         print(f"  Engine: OpenFang  ·  Model: {model}  ·  Private")
-        print(f"  [Cold start — loading {model}, first response may take 60-90s]\n")
+        _ghost([
+            "",
+            "  \"The best model is the one that runs on your hardware.\"  — the herd, probably",
+            "",
+        ], duration=2.2)
+        print(f"  [Cold start — loading {model}, first response may take 10-15s]\n")
 
     # Build message history
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]

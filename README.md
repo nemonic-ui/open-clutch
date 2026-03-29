@@ -92,9 +92,7 @@ Clutch 1.5 operates as part of a larger distributed AI agent network:
 - Telegram channel live
 
 **Next — v2.0 Alpha (OPENCLUTCH)**
-- Local model shipped out of the box — no API key required
-- Ollama-backed inference, TurboQuant-compressed model
-- Optional paid tier: Anthropic 1M token context experience
+- Claude-powered core — full reasoning, 1M token context
 - 40-channel adapter support via OpenFang
 - Single-command install, zero configuration
 - Designed for end users — not developers
