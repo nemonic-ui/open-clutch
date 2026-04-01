@@ -33,12 +33,6 @@ curl -fsSL https://ollama.com/install.sh | sh
 
 # Pull onboarding model
 ollama pull llama3.2:3b
-
-# Install OpenFang
-curl -sSf https://openfang.sh | sh
-
-# Initialize
-openfang init && openfang start
 ```
 
 ---
@@ -73,7 +67,7 @@ Onboarding model (llama3.2:3b) runs locally
         ↓
 Collects: name, primary goal, skill level
         ↓
-Stores context in OpenFang memory
+Stores context in agent memory
         ↓
 Routes to appropriate agent (browser, research, social, task)
         ↓
