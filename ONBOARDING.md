@@ -88,7 +88,7 @@ OPENCLUTCH is building toward TurboQuant as the default compression layer. The i
 
 ---
 
-## Benchmark Results (Ares VM, Z230 Host, i7-4790)
+## Benchmark Results (Ares VM, Hephaestus Host, Prometheus Core)
 
 | Model | Response Time | Tokens/sec | Domain Accuracy |
 |---|---|---|---|
