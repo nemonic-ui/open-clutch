@@ -67,8 +67,26 @@ Eight autonomous agents, each scoped to a domain:
 
 **DAO — OpenClaw** *(pre-launch)*
 - Community-governed agent network
-- Lightning Network integration
 - Token-based agent economy
+
+---
+
+## The Payment Stack
+
+Two layers. Each with a job.
+
+**Lightning Network — value transfer**
+The gold standard. High-value, final settlement. The rails under everything.
+
+**Solana — mesh payments**
+Low-friction, fast, nimble. Per-call micro-payments between mesh nodes.
+The settlement layer running under eCLUTCH compute services.
+
+```
+High value transfer    →  Lightning Network
+Mesh node payments     →  Solana
+Per-call API credits   →  Solana (MPP protocol)
+```
 
 ---
 
